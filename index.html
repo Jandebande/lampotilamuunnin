@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lämpötilamuunnin</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: Arial, Helvetica, sans-serif;
+            background: #f4f7fb;
+            color: #172033;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 40px 20px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 620px;
+            background: white;
+            padding: 36px;
+            border-radius: 14px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+        }
+
+        h1 {
+            margin-top: 0;
+            margin-bottom: 28px;
+            font-size: 2rem;
+        }
+
+        .field {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 7px;
+            font-weight: bold;
+        }
+
+        select,
+        input[type="number"] {
+            width: 100%;
+            padding: 11px 12px;
+            border: 1px solid #aab4c3;
+            border-radius: 6px;
+            font-size: 1rem;
+        }
+
+        .decimals {
+            border: 0;
+            padding: 0;
+            margin: 0 0 22px;
+        }
+
+        .decimals legend {
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        .radio-row {
+            display: flex;
+            gap: 18px;
+            flex-wrap: wrap;
+        }
+
+        .radio-row label {
+            font-weight: normal;
+            margin: 0;
+            cursor: pointer;
+        }
+
+        button {
+            border: 0;
+            border-radius: 6px;
+            padding: 11px 20px;
+            font-size: 1rem;
+            font-weight: bold;
+            background: #1769aa;
+            color: white;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #12558b;
+        }
+
+        #vastaus {
+            margin-top: 24px;
+            padding: 14px 16px;
+            border-radius: 6px;
+            min-height: 20px;
+        }
+
+        #vastaus.success {
+            background: #e9f7ef;
+            border: 1px solid #9ad6b1;
+            color: #176b3a;
+        }
+
+        #vastaus.error {
+            background: #fff0f0;
+            border: 1px solid #e2a2a2;
+            color: #9d2020;
+        }
+
+        .ohje {
+            margin-top: 26px;
+            color: #566174;
+            font-size: 0.92rem;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+
+<body>
+    <main class="container">
+        <h1>Lämpötilamuunnin</h1>
+
+        <form id="muunninForm">
+            <div class="field">
+                <label for="suunta">Muunnos</label>
+                <select id="suunta">
+                    <option value="c-f">Celsius → Fahrenheit</option>
+                    <option value="f-c">Fahrenheit → Celsius</option>
+                </select>
+            </div>
+
+            <div class="field">
+                <label for="lampotila">Syötä lämpötila:</label>
+                <input
+                    type="number"
+                    id="lampotila"
+                    step="any"
+                    placeholder="Esim. 20"
+                    aria-describedby="vastaus"
+                >
+            </div>
+
+            <fieldset class="decimals">
+                <legend>Desimaalit</legend>
+                <div class="radio-row">
+                    <label>
+                        <input type="radio" name="desimaalit" value="1" checked>
+                        1 desimaali
+                    </label>
+                    <label>
+                        <input type="radio" name="desimaalit" value="2">
+                        2 desimaalia
+                    </label>
+                    <label>
+                        <input type="radio" name="desimaalit" value="3">
+                        3 desimaalia
+                    </label>
+                </div>
+            </fieldset>
+
+            <button type="submit">Muunna</button>
+        </form>
+
+        <div id="vastaus" aria-live="polite"></div>
+
+        <p class="ohje">
+            Ohjelma tarkistaa tyhjän tai virheellisen syötteen sekä sen,
+            ettei lämpötila alita absoluuttista nollapistettä (-273,15 °C).
+        </p>
+    </main>
+
+    <script>
+        const form = document.getElementById("muunninForm");
+        const vastaus = document.getElementById("vastaus");
+
+        form.addEventListener("submit", function (event) {
+            event.preventDefault();
+            muunnaLampotila();
+        });
+
+        function muunnaLampotila() {
+            const suunta = document.getElementById("suunta").value;
+            const syote = document.getElementById("lampotila").value.trim();
+            const desimaalit = Number(
+                document.querySelector('input[name="desimaalit"]:checked').value
+            );
+
+            // Tyhjä syöte
+            if (syote === "") {
+                naytaVastaus("Anna lämpötila ennen muuntamista.", "error");
+                return;
+            }
+
+            // Vain lukuarvo hyväksytään
+            const lampotila = Number(syote);
+
+            if (!Number.isFinite(lampotila)) {
+                naytaVastaus("Virhe: syötä lämpötilaksi lukuarvo.", "error");
+                return;
+            }
+
+            let celsius;
+            let tulos;
+            let yksikko;
+
+            if (suunta === "c-f") {
+                // Lähtöarvo on Celsius
+                celsius = lampotila;
+
+                if (celsius < -273.15) {
+                    naytaVastaus(
+                        "Virhe: lämpötila ei voi olla pienempi kuin absoluuttinen nollapiste (-273,15 °C).",
+                        "error"
+                    );
+                    return;
+                }
+
+                tulos = celsius * 9 / 5 + 32;
+                yksikko = "°F";
+                naytaVastaus(
+                    `${celsius.toFixed(desimaalit)} °C = ${tulos.toFixed(desimaalit)} °F`,
+                    "success"
+                );
+            } else {
+                // Lähtöarvo on Fahrenheit
+                tulos = (lampotila - 32) * 5 / 9;
+                celsius = tulos;
+
+                if (celsius < -273.15) {
+                    naytaVastaus(
+                        "Virhe: lämpötila ei voi olla pienempi kuin absoluuttinen nollapiste (-273,15 °C).",
+                        "error"
+                    );
+                    return;
+                }
+
+                yksikko = "°C";
+                naytaVastaus(
+                    `${lampotila.toFixed(desimaalit)} °F = ${tulos.toFixed(desimaalit)} °C`,
+                    "success"
+                );
+            }
+        }
+
+        function naytaVastaus(teksti, tyyppi) {
+            vastaus.textContent = teksti;
+            vastaus.className = tyyppi;
+        }
+    </script>
+</body>
+</html>
